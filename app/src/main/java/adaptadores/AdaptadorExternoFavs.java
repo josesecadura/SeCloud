@@ -85,74 +85,73 @@ public class AdaptadorExternoFavs extends RecyclerView.Adapter<AdaptadorExternoF
                 }
             });
 
-            //Voy a hacer un switch para añadir la imagen dependiendo de la extension
-            switch (archivo.getExtension()) {
-                case "pdf":
-                case "odp":
-                case "pps":
-                case "ppt":
-                case "pptx":
-                    holder.ivImagen.setImageResource(R.drawable.icon_pdf);
-                    break;
-                case "docx":
-                case "doc":
-                case "odt":
-                case "rtf":
-                case "tex":
-                case "wpd":
-                case "wps":
-                    //Quiero cargar una vista previa del archivo docx en el ImageView
-
-                    break;
-                case "txt":
-                case "csv":
-                case "xml":
-                case "json":
-                case "html":
-                case "css":
-                case "js":
-                case "php":
-                case "java":
-                case "py":
-                case "c":
-                case "cpp":
-                case "h":
-                case "cs":
-                case "vb":
-                case "sql":
-
-                    break;
-                case "png":
-                case "jpg":
-                case "jpeg":
-                case "gif":
-                case "bmp":
-                    // Agregarla al Imageiew con Picasso
-                    // Agregarla al ImageView con Picasso
-                    Picasso.get()
-                            .load(archivo.getImagen())
-                            .resize(2000, 3000)
-                            .centerCrop()
-                            .placeholder(R.drawable.placeholder_image) // Agrega un placeholder mientras se carga la imagen
-                            .into(holder.ivImagen);
-                    break;
-                case "mp3":
-                case "wav":
-                case "ogg":
-                    holder.ivImagen.setImageResource(R.drawable.icon_audio);
-                    break;
-                case "mp4":
-                case "avi":
-                case "mov":
-                case "wmv":
-                case "flv":
-                case "3gp":
-                case "mkv":
-                    holder.ivImagen.setImageResource(R.drawable.icon_imagen);
-                    break;
-                default:
-                    holder.ivImagen.setImageResource(R.drawable.placeholder_image);
-                    break;
+        switch (archivo.getExtension()) {
+            case "pdf":
+            case "odp":
+            case "pps":
+            case "ppt":
+            case "pptx":
+                holder.ivImagen.setImageResource(R.drawable.icon_pdf2);
+                break;
+            case "docx":
+            case "doc":
+            case "odt":
+            case "rtf":
+            case "tex":
+            case "wpd":
+            case "wps":
+                holder.ivImagen.setImageResource(R.drawable.icon_word);
+                //Quiero cargar una vista previa del archivo docx en el ImageView
+                break;
+            case "txt":
+            case "csv":
+            case "xml":
+            case "json":
+            case "html":
+            case "css":
+            case "js":
+            case "php":
+            case "java":
+            case "py":
+            case "c":
+            case "cpp":
+            case "h":
+            case "cs":
+            case "vb":
+            case "sql":
+                holder.ivImagen.setImageResource(R.drawable.icon_txt);
+                break;
+            case "png":
+            case "jpg":
+            case "jpeg":
+            case "gif":
+            case "bmp":
+                // Agregarla al Imageiew con Picasso
+                // Agregarla al ImageView con Picasso
+                Picasso.get()
+                        .load(archivo.getImagen())
+                        .resize(2000, 3000)
+                        .centerCrop()
+                        .placeholder(R.drawable.placeholder_image) // Agrega un placeholder mientras se carga la imagen
+                        .into(holder.ivImagen);
+                break;
+            case "mp3":
+            case "wav":
+            case "ogg":
+                holder.ivImagen.setImageResource(R.drawable.icon_audio2);
+                break;
+            case "mp4":
+            case "avi":
+            case "mov":
+            case "wmv":
+            case "flv":
+            case "3gp":
+            case "mkv":
+                holder.ivImagen.setImageResource(R.drawable.icon_video);
+                break;
+            default:
+                holder.ivImagen.setImageResource(R.drawable.icon_txt);
+                break;
             }
             holder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override

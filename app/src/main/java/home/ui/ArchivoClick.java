@@ -14,7 +14,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.secloud.R;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -56,7 +55,7 @@ public class ArchivoClick extends Fragment {
         // Obtener los datos del archivo seleccionado y establecerlos en las vistas correspondientes
         String ruta = getArguments().getString("ruta");
         imagen = getArguments().getString("imagen");
-        Toast.makeText(getContext(), ruta, Toast.LENGTH_SHORT).show();
+        ((HomeActivity) getActivity()).getSupportActionBar().setTitle("Archivo");
         archivoRef = FirebaseStorage.getInstance().getReference().child(ruta);
         archivoRef.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
             @Override
@@ -71,9 +70,9 @@ public class ArchivoClick extends Fragment {
                 String autor = storageMetadata.getCustomMetadata("Autor");
                 boolean compartido = Boolean.parseBoolean(storageMetadata.getCustomMetadata("Compartido"));
                 long tamano = storageMetadata.getSizeBytes();
-                tamanoArchivo.setText(tamano+" bytes");
+                tamanoArchivo.setText(tamano + " bytes");
                 // Establecer los datos en las vistas correspondientes
-                edtNombreArchivo.setText(nombreArchivo+"."+extensionArchivo);
+                edtNombreArchivo.setText(nombreArchivo + "." + extensionArchivo);
                 edtNombreArchivo.setEnabled(false);
                 txtDescripcionArchivo.setText(descripcionArchivo);
                 txtFechaSubida.setText(new Date(fechaSubida).toString().substring(0, 10));
@@ -82,23 +81,72 @@ public class ArchivoClick extends Fragment {
                 txtCompartido.setText(compartido ? "Sí" : "No");
 
                 // Mostrar la imagen o el icono correspondiente según la extensión del archivo
-                switch (extensionArchivo.toLowerCase()) {
+                switch (extensionArchivo) {
                     case "pdf":
-                        // Mostrar una vista previa del pdf
+                    case "odp":
+                    case "pps":
+                    case "ppt":
+                    case "pptx":
+                        imageArchivo.setImageResource(R.drawable.icon_pdf2);
                         break;
                     case "docx":
-                        imageArchivo.setImageResource(R.drawable.icon_pdf);
+                    case "doc":
+                    case "odt":
+                    case "rtf":
+                    case "tex":
+                    case "wpd":
+                    case "wps":
+                        imageArchivo.setImageResource(R.drawable.icon_word);
+                        //Quiero cargar una vista previa del archivo docx en el ImageView
                         break;
                     case "txt":
-                        imageArchivo.setImageResource(R.drawable.icon_audio);
+                    case "csv":
+                    case "xml":
+                    case "json":
+                    case "html":
+                    case "css":
+                    case "js":
+                    case "php":
+                    case "java":
+                    case "py":
+                    case "c":
+                    case "cpp":
+                    case "h":
+                    case "cs":
+                    case "vb":
+                    case "sql":
+                        imageArchivo.setImageResource(R.drawable.icon_txt);
                         break;
-                    case "jpg":
                     case "png":
+                    case "jpg":
                     case "jpeg":
-                        Picasso.get().load(imagen).resize(2000, 3000).into(imageArchivo);
+                    case "gif":
+                    case "bmp":
+                        // Agregarla al Imageiew con Picasso
+                        // Agregarla al ImageView con Picasso
+                        Picasso.get()
+                                .load(imagen)
+                                .resize(2000, 3000)
+                                .centerCrop()
+                                .placeholder(R.drawable.placeholder_image) // Agrega un placeholder mientras se carga la imagen
+                                .into(imageArchivo);
+                        break;
+                    case "mp3":
+                    case "wav":
+                    case "ogg":
+                        imageArchivo.setImageResource(R.drawable.icon_audio2);
+                        break;
+                    case "mp4":
+                    case "avi":
+                    case "mov":
+                    case "wmv":
+                    case "flv":
+                    case "3gp":
+                    case "mkv":
+                        imageArchivo.setImageResource(R.drawable.icon_video);
                         break;
                     default:
-                        imageArchivo.setImageResource(R.drawable.icon_pdf);
+                        imageArchivo.setImageResource(R.drawable.icon_txt);
                         break;
                 }
             }
@@ -152,12 +200,7 @@ public class ArchivoClick extends Fragment {
                 String nuevoNombre = edtNombreArchivo.getText().toString().trim();
                 String nuevaDescripcion = txtDescripcionArchivo.getText().toString().trim();
                 if (nuevoNombre.isEmpty()) {
-                    Toast.makeText(getActivity(), "El nombre del archivo no puede estar vacío", Toast.LENGTH_SHORT).show();
-                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                    builder.setTitle("Error");
-                    builder.setMessage("El nombre del archivo no puede estar vacío");
-                    builder.setPositiveButton("Aceptar", null);
-                    builder.create().show();
+                    edtNombreArchivo.setError("El nombre del archivo es requerido");
                     return;
                 }
 
@@ -166,7 +209,7 @@ public class ArchivoClick extends Fragment {
                 StorageReference storageRef = FirebaseStorage.getInstance().getReference();
                 StorageReference archivoRef = storageRef.child(ruta);
                 archivoRef.updateMetadata(new StorageMetadata.Builder()
-                                .setCustomMetadata("Name", nuevoNombre + "." + extensionArchivo)
+                                .setCustomMetadata("Name", nuevoNombre)
                                 .setCustomMetadata("Description", nuevaDescripcion)
                                 .build())
                         .addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
@@ -236,7 +279,7 @@ public class ArchivoClick extends Fragment {
         File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
 
         // Crear un archivo con la ruta de la carpeta de descargas y el nombre del archivo
-        File localFile = new File(downloadsDir, nombreArchivo);
+        File localFile = new File(downloadsDir, nombreArchivo+"."+extensionArchivo);
 
         archivoRef.getFile(localFile)
                 .addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {

@@ -19,7 +19,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.secloud.R;
+
 import modelos.Archivo;
+
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Transformation;
 
@@ -70,7 +72,6 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
     }
 
 
-
     public void setOnArchivoClickListener(OnArchivoClickListener listener) {
         this.archivoClickListener = listener;
     }
@@ -91,14 +92,14 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
         holder.nameArchivo.setText(archivo.getNameMetadata() + "." + archivo.getExtension());
         holder.nameAutor.setText(archivo.getAutor());
 
-        //Voy a hacer un switch para añadir la imagen dependiendo de la extension
+
         switch (archivo.getExtension()) {
             case "pdf":
             case "odp":
             case "pps":
             case "ppt":
             case "pptx":
-                holder.ivImagen.setImageResource(R.drawable.icon_pdf);
+                holder.ivImagen.setImageResource(R.drawable.icon_pdf2);
                 break;
             case "docx":
             case "doc":
@@ -107,8 +108,8 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
             case "tex":
             case "wpd":
             case "wps":
+                holder.ivImagen.setImageResource(R.drawable.icon_word);
                 //Quiero cargar una vista previa del archivo docx en el ImageView
-
                 break;
             case "txt":
             case "csv":
@@ -126,7 +127,7 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
             case "cs":
             case "vb":
             case "sql":
-
+                holder.ivImagen.setImageResource(R.drawable.icon_txt);
                 break;
             case "png":
             case "jpg":
@@ -169,7 +170,7 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
             case "mp3":
             case "wav":
             case "ogg":
-                holder.ivImagen.setImageResource(R.drawable.icon_audio);
+                holder.ivImagen.setImageResource(R.drawable.icon_audio2);
                 break;
             case "mp4":
             case "avi":
@@ -178,13 +179,10 @@ public class AdaptadorExternoShared extends RecyclerView.Adapter<AdaptadorExtern
             case "flv":
             case "3gp":
             case "mkv":
-                holder.ivImagen.setImageResource(R.drawable.icon_imagen);
-                break;
-            case "carpeta":
-                holder.ivImagen.setImageResource(R.drawable.carpeta);
+                holder.ivImagen.setImageResource(R.drawable.icon_video);
                 break;
             default:
-                holder.ivImagen.setImageResource(R.drawable.placeholder_image);
+                holder.ivImagen.setImageResource(R.drawable.icon_txt);
                 break;
         }
         holder.itemView.setOnClickListener(new View.OnClickListener() {

@@ -3,6 +3,7 @@ package home.ui.profile;
 import static android.app.Activity.RESULT_OK;
 
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -31,6 +32,10 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.secloud.R;
+import com.example.secloud.users.LoginActivity;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
@@ -40,6 +45,9 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.ListResult;
+import com.google.firebase.storage.StorageReference;
 import com.squareup.picasso.Picasso;
 
 import java.io.ByteArrayOutputStream;
@@ -69,6 +77,7 @@ public class ProfileFragment extends Fragment {
     private Button btnCancel;
 
     private Button btnEdit;
+    private Button btnDelete;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -79,6 +88,7 @@ public class ProfileFragment extends Fragment {
         texntNameLabel = view.findViewById(R.id.text_name_label);
         textEmailLabel = view.findViewById(R.id.text_email_label);
         textNumberLabel = view.findViewById(R.id.text_telefono);
+        btnDelete = view.findViewById(R.id.btn_delete);
         userImage = view.findViewById(R.id.image_user);
         textName = view.findViewById(R.id.text_name);
         textEmail = view.findViewById(R.id.text_email);
@@ -159,10 +169,68 @@ public class ProfileFragment extends Fragment {
                 toggleEditMode(false);
             }
         });
-
+        btnDelete.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                deleteUser();
+            }
+        });
         return view;
     }
 
+    private void deleteUser() {
+        String currentUserId = currentUser.getUid();
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Confirmar eliminación");
+        builder.setMessage("¿Estás seguro de que deseas eliminar tu cuenta? Esta acción no se puede deshacer.");
+        builder.setPositiveButton("Eliminar", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                // Eliminar la cuenta del usuario
+                if (currentUser != null) {
+                    //Luego lo elimino de storage para que no quede basura en el servidor para ello me recorro
+                    //storage entero tanto subcarpetas como archivos y elimino lo que se almacene denreo de la uid del usuario
+                    StorageReference storageRef = FirebaseStorage.getInstance().getReference();
+                    StorageReference userRef = storageRef.child("users").child(currentUserId);
+                    userRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                        @Override
+                        public void onSuccess(ListResult listResult) {
+                            for (StorageReference item : listResult.getItems()) {
+                                item.delete();
+                            }
+                        }
+                    });
+                    StorageReference papeleraRef = storageRef.child("recycler_bin").child(currentUserId);
+                    papeleraRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                        @Override
+                        public void onSuccess(ListResult listResult) {
+                            for (StorageReference item : listResult.getItems()) {
+                                item.delete();
+                            }
+                        }
+                    });
+                    //Por ultimo elimino compartidos
+                    StorageReference compartidosRef = storageRef.child("compartidos").child("users").child(currentUserId);
+                    compartidosRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
+                        @Override
+                        public void onSuccess(ListResult listResult) {
+                            for (StorageReference item : listResult.getItems()) {
+                                item.delete();
+                            }
+                        }
+                    });
+                    // Eliminación exitosa, cerrar sesión y redirigir al login
+                    usersRef.removeValue();
+                    currentUser.delete();
+                    FirebaseAuth.getInstance().signOut();
+                    startActivity(new Intent(getContext(), LoginActivity.class));
+                    getActivity().finish();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancelar", null);
+        builder.create().show();
+    }
 
     private void togglePasswordVisibility(boolean isChecked) {
         //Si lo pulsa se mostraran las contraseñas durante 5 segundos
@@ -196,20 +264,21 @@ public class ProfileFragment extends Fragment {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         startActivityForResult(intent, REQUEST_GALLERY);
     }
+
     //Recojo el resultado de la actividad de la cámara o la galería
     @Override
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         //Compruebo si el resultado es de la cámara
-        if(requestCode==REQUEST_CAMERA){
-            if(resultCode==RESULT_OK){
+        if (requestCode == REQUEST_CAMERA) {
+            if (resultCode == RESULT_OK) {
                 //Obtengo la imagen capturada por la cámara
                 Bitmap bitmap = (Bitmap) data.getExtras().get("data");
                 //Guardo la imagen en la base de datos
                 saveImage(bitmap);
             }
-        }else if(requestCode==REQUEST_GALLERY){
-            if(resultCode==RESULT_OK){
+        } else if (requestCode == REQUEST_GALLERY) {
+            if (resultCode == RESULT_OK) {
                 //Obtengo la imagen seleccionada de la galería
                 Uri imageUri = data.getData();
                 try {
@@ -225,10 +294,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void saveImage(Bitmap bitmap) {
-        //Unicamente cambio la uri de la imagen en la base de datos y la imagen de la vista
-        //Si la tomo de la camara debere guardarla en firebase storage y obtener la uri
-        //Si la selecciono de la galeria obtengo la uri directamente
-        if(bitmap!=null){
+        if (bitmap != null) {
             //Obtengo la uri de la imagen
             Uri imageUri = getImageUri(bitmap);
             //Guardo la uri en la base de datos
@@ -254,11 +320,11 @@ public class ProfileFragment extends Fragment {
                     if (snapshot.exists()) {
                         String name = snapshot.child("name").getValue(String.class);
                         String email = snapshot.child("email").getValue(String.class);
-                        if (snapshot.child("number").exists()) {
+                        if (snapshot.child("number").exists() && !snapshot.child("number").getValue(String.class).isEmpty()) {
                             String phone = snapshot.child("number").getValue(String.class);
                             textNumber.setText(phone);
                         } else {
-                            textNumber.setText("");
+                            textNumber.setText("No registrado");
                         }
                         if (snapshot.child("photo").exists()) {
                             String photoUrl = snapshot.child("photo").getValue(String.class);
@@ -293,13 +359,14 @@ public class ProfileFragment extends Fragment {
             texntNameLabel.setVisibility(View.GONE);
             textEmailLabel.setVisibility(View.GONE);
             textNumberLabel.setVisibility(View.GONE);
+            btnDelete.setVisibility(View.GONE);
             btnEdit.setVisibility(View.GONE);
             textName.setVisibility(View.GONE);
             textNumber.setVisibility(View.GONE);
             btnChangePhoto.setVisibility(View.VISIBLE);
             layoutEdit.setVisibility(View.VISIBLE);
             etNewName.setText(textName.getText());
-            if (textNumber.getText().toString().isEmpty()) {
+            if (textNumber.getText().toString().equalsIgnoreCase("No registrado")) {
                 etNewPhone.setText("");
             } else {
                 etNewPhone.setText(textNumber.getText());
@@ -320,9 +387,8 @@ public class ProfileFragment extends Fragment {
                 etOldPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
                 etOldPassword.setText("No se puede modificar al ser de Google");
                 etOldPassword.setEnabled(false);
-                etOldPassword.setVisibility(View.GONE);
                 etNewPassword.setVisibility(View.GONE);
-                etNewPassword.setVisibility(View.GONE);
+                etConfirmPassword.setVisibility(View.GONE);
                 toggleButton.setVisibility(View.GONE);
             } else {
                 etOldPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
@@ -342,6 +408,7 @@ public class ProfileFragment extends Fragment {
             btnEdit.setVisibility(View.VISIBLE);
             textName.setVisibility(View.VISIBLE);
             textNumber.setVisibility(View.VISIBLE);
+            btnDelete.setVisibility(View.VISIBLE);
             btnChangePhoto.setVisibility(View.GONE);
             layoutEdit.setVisibility(View.GONE);
         }
@@ -375,7 +442,13 @@ public class ProfileFragment extends Fragment {
             etNewPhone.requestFocus();
             validData = false;
             return;
-        } else {
+        }else if (newPhone.isEmpty()){
+            etNewPhone.setError(null);
+            validData = true;
+            usersRef.child("number").setValue("");
+            textNumber.setText("No registrado");
+        }
+        else {
             etNewPhone.setError(null);
             validData = true;
             usersRef.child("number").setValue(newPhone);

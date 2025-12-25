@@ -1,7 +1,11 @@
-<ScrollView
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -13,6 +17,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
+            android:layout_marginTop="30dp"
             android:orientation="horizontal">
 
             <ImageView
@@ -20,7 +25,8 @@
                 android:layout_width="150dp"
                 android:layout_height="150dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"
                 android:background="@drawable/rounded_background"
                 android:scaleType="centerCrop"
                 android:src="@drawable/google" />
@@ -36,70 +42,80 @@
         </LinearLayout>
 
         <!-- Nombre del usuario -->
-        <TextView
-            android:id="@+id/text_name_label"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Nombre:"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="32dp"
-            android:textSize="24sp" />
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="50dp"
+            android:gravity="center_vertical"> <!-- Modificado: Cambiado gravity a center_vertical -->
 
-        <TextView
-            android:id="@+id/text_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Nombre del Usuario"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:textSize="18sp" />
+            <TextView
+                android:id="@+id/text_name_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Nombre:"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/text_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:text="Nombre del Usuario"
+                android:textSize="18sp" />
+        </LinearLayout>
 
         <!-- Correo del usuario -->
-        <TextView
-            android:id="@+id/text_email_label"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Correo:"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
-            android:textSize="24sp" />
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="50dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"> <!-- Modificado: Cambiado gravity a center_vertical -->
 
-        <TextView
-            android:id="@+id/text_email"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Correo del Usuario"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:textSize="18sp" />
+            <TextView
+                android:id="@+id/text_email_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Correo:"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/text_email"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:text="Correo del Usuario"
+                android:textSize="18sp" />
+        </LinearLayout>
 
         <!-- Teléfono del usuario -->
-        <TextView
-            android:id="@+id/text_telefono"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Movil: :"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
-            android:textSize="24sp" />
-        <TextView
-            android:id="@+id/text_number"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Movil del usuario:"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp"
-            android:textSize="18sp" />
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp"
+            android:layout_marginLeft="50dp"
+            android:gravity="center_vertical"> <!-- Modificado: Cambiado gravity a center_vertical -->
 
-        <!-- Botón para editar la información del usuario -->
-        <Button
-            android:id="@+id/btn_edit"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Editar"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="32dp"
-            android:textSize="24sp" />
+            <TextView
+                android:id="@+id/text_telefono"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Teléfono:"
+                android:textSize="24sp" />
+
+            <TextView
+                android:id="@+id/text_number"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:text="Teléfono del Usuario"
+                android:textSize="18sp" />
+        </LinearLayout>
+
 
         <!-- Layout para editar la información del usuario -->
         <LinearLayout
@@ -195,6 +211,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Cancelar"
+                android:backgroundTint="#F36969"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="8dp"
                 android:textSize="24sp" />
@@ -202,5 +219,36 @@
         </LinearLayout>
 
     </LinearLayout>
+    </ScrollView>
 
-</ScrollView>
+    <LinearLayout
+        android:id="@+id/layout_buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp">
+
+        <Button
+            android:id="@+id/btn_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Eliminar"
+            android:textSize="24sp"
+            android:backgroundTint="#F36969"
+            android:layout_marginEnd="16dp" />
+
+        <Button
+            android:id="@+id/btn_edit"
+            android:layout_width="144dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="16dp"
+            android:backgroundTint="#2196F3"
+            android:text="Editar"
+            android:textSize="24sp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

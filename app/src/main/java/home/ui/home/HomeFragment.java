@@ -26,6 +26,7 @@ import adaptadores.AdaptadorExternoHome;
 
 import dialogs.DialogoCompartir;
 import dialogs.DialogoRename;
+import home.HomeActivity;
 import modelos.Archivo;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -47,6 +48,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombreArchivoListener, AdaptadorExternoHome.OnArchivoClickListener {
@@ -66,7 +68,6 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
         root.animate().alpha(1f).setDuration(1500); // Animar la opacidad de la vista raíz a 1 (visible) en 1000 milisegundos
         datos.clear();
         final RecyclerView recyclerView = binding.recyclerView;
-
         AdaptadorExternoHome adaptadorExternoHome = AdaptadorExternoHome.getInstancia(datos);
         adaptadorExternoHome.setOnArchivoClickListener(this);
         GridLayoutManager layoutManager = new GridLayoutManager(getContext(), 2);
@@ -87,42 +88,41 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
         listRef.listAll().addOnSuccessListener(new OnSuccessListener<ListResult>() {
             @Override
             public void onSuccess(ListResult listResult) {
-                for (StorageReference prefix : listResult.getPrefixes()) {
-                    // All the prefixes under listRef.
-                    // You may call listAll() recursively on them.
-                    //Aqui obtendre las carpetas que tenga el usuario dentro de la carpeta files
-                    String name = prefix.getName();
-                    Archivo archivo = new Archivo(name, name, "", false, false, true);
-                    datos.add(archivo);
-                    ((AdaptadorExternoHome) binding.recyclerView.getAdapter()).notifyDataSetChanged();
-                }
+                ArrayList<Archivo> archivos = new ArrayList<>(); // Lista temporal para almacenar los archivos
+
+                int totalItems = listResult.getItems().size();
+                AtomicInteger itemCount = new AtomicInteger(0);
 
                 for (StorageReference item : listResult.getItems()) {
-                    // All the items under listRef.
                     item.getMetadata().addOnSuccessListener(storageMetadata -> {
                         String nombre = storageMetadata.getCustomMetadata("Name");
                         String extension = storageMetadata.getCustomMetadata("Extension");
                         boolean favorito = Boolean.parseBoolean(storageMetadata.getCustomMetadata("Favorito"));
                         Archivo archivo = new Archivo(storageMetadata.getName(), nombre, extension, favorito, false, false);
-                        datos.add(archivo);
-                        Collections.sort(datos, new Comparator<Archivo>() {
-                            @Override
-                            public int compare(Archivo archivo1, Archivo archivo2) {
-                                AdaptadorExternoHome.getInstancia().notifyDataSetChanged();
-                                return archivo1.getNameMetadata().compareTo(archivo2.getNameMetadata());
-                            }
-                        });
-                        ((AdaptadorExternoHome) binding.recyclerView.getAdapter()).notifyDataSetChanged();
+                        archivo.setFecha_subida(String.valueOf(storageMetadata.getCreationTimeMillis()));
+
                         StorageReference storageRef1 = FirebaseStorage.getInstance().getReference();
                         String path = storageMetadata.getPath();
                         storageRef1.child(path).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
                             @Override
                             public void onSuccess(Uri uri) {
-                                //Tengo que controlar si la uri es de una imagen o de un archivo normal
-                                if(extension.equals("jpg") || extension.equals("png") || extension.equals("jpeg") || extension.equals("gif") || extension.equals("bmp") || extension.equals("webp") || extension.equals("psd") || extension.equals("svg") || extension.equals("tiff")) {
+                                if (extension.equals("jpg") || extension.equals("png") || extension.equals("jpeg") || extension.equals("gif") || extension.equals("bmp") || extension.equals("webp") || extension.equals("psd") || extension.equals("svg") || extension.equals("tiff")) {
                                     archivo.setImagen(uri.toString());
-                                    ((AdaptadorExternoHome) binding.recyclerView.getAdapter()).notifyDataSetChanged();
+                                }
 
+                                archivos.add(archivo); // Agregar archivo a la lista temporal
+                                Collections.sort(archivos, new Comparator<Archivo>() {
+                                    @Override
+                                    public int compare(Archivo o1, Archivo o2) {
+                                        return o2.getNameMetadata().compareTo(o1.getNameMetadata() );
+                                    }
+                                });
+                                int currentItem = itemCount.incrementAndGet();
+                                if (currentItem == totalItems) {
+
+                                    AdaptadorExternoHome.getInstancia(archivos);
+                                    ((AdaptadorExternoHome) binding.recyclerView.getAdapter()).setData(archivos);
+                                    datos = archivos;
                                 }
                             }
                         });
@@ -132,7 +132,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                // Uh-oh, an error occurred!
+                // Manejar el error
             }
         });
     }
@@ -159,120 +159,147 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
 
                 return true;
             case BORRAR:
-
                 archivoRecogido = datos.get(item.getGroupId());
-                // Obtener referencia al archivoRecogido original en Firebase Storage
-                if (!archivoRecogido.isCarpeta()) {
-                    moverArchivoPapelera(item, datos);
-                } else {
-                    eliminarCarpeta(item, datos);
-                }
-
+                eliminarArchivo(item, datos);
                 return true;
             case COMPARTIR:
                 archivoRecogido = datos.get(item.getGroupId());
                 // Obtener el correo electrónico introducido por el usuario
-                final String[] correoElectronico = new String[1];
-
-                // Crear un diálogo con un campo de entrada para solicitar el correo al usuario
-                DialogoCompartir dialogoCompartir = new DialogoCompartir(getContext(), new DialogoCompartir.OnCompartirArchivoListener() {
-                    @Override
-                    public void onCompartirArchivo(String email) {
-                        correoElectronico[0] = email;
-
-                        // Consultar la base de datos para verificar si el correo electrónico existe
-                        DatabaseReference usuariosRef = FirebaseDatabase.getInstance().getReference("users");
-                        Query query = usuariosRef.orderByChild("email").equalTo(correoElectronico[0]);
-
-                        query.addListenerForSingleValueEvent(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
-                                if (dataSnapshot.exists()) {
-                                    for (DataSnapshot usuarioSnapshot : dataSnapshot.getChildren()) {
-                                        String uidUsuarioDestino = usuarioSnapshot.getKey();
-                                        StorageReference storageRef = FirebaseStorage.getInstance().getReference();
-                                        StorageReference archivoRef = storageRef.child("users/" + uid + "/" + archivoRecogido.getUriArchivo());
-                                        archivoRef.updateMetadata(new StorageMetadata.Builder().setCustomMetadata("Compartido", "true").setCustomMetadata("UidUsuarioDestino", uidUsuarioDestino).build()).addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                            @Override
-                                            public void onSuccess(StorageMetadata storageMetadata) {
-                                                Toast.makeText(getContext(), "Archivo compartido con éxito", Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-                                        // Obtener una referencia al directorio local donde se descargará el archivoRecogido
-                                        File localDirectory = new File(getContext().getFilesDir(), "archivos_descargados");
-                                        if (!localDirectory.exists()) {
-                                            localDirectory.mkdirs();
-                                        }
-
-                                        // Obtener una referencia al archivoRecogido local donde se guardará el archivoRecogido descargado
-                                        File localFile = new File(localDirectory, archivoRecogido.getUriArchivo());
-
-                                        // Descargar el archivoRecogido a la ruta local
-                                        archivoRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
-                                            @Override
-                                            public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
-                                                // El archivoRecogido se ha descargado correctamente a la ruta local
-
-                                                // Obtener referencia al nuevo directorio en Firebase Storage
-                                                StorageReference nuevoDirectorioRef = FirebaseStorage.getInstance().getReference().child("compartidos/users/" + uidUsuarioDestino + "/" + archivoRecogido.getUriArchivo());
-
-                                                // Obtener metadatos del archivoRecogido original
-                                                archivoRef.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                                    @Override
-                                                    public void onSuccess(StorageMetadata metadata) {
-                                                        // Establecer los metadatos al nuevo archivoRecogido en la otra ruta
-                                                        StorageMetadata.Builder metadataBuilder = new StorageMetadata.Builder();
-                                                        metadataBuilder.setCustomMetadata("Name", metadata.getCustomMetadata("Name"));
-                                                        metadataBuilder.setCustomMetadata("Extension", metadata.getCustomMetadata("Extension"));
-                                                        metadataBuilder.setCustomMetadata("Favorito", metadata.getCustomMetadata("Favorito"));
-                                                        metadataBuilder.setCustomMetadata("Autor", metadata.getCustomMetadata("Autor"));
-                                                        metadataBuilder.setCustomMetadata("Compartido", metadata.getCustomMetadata("Compartido"));
-                                                        metadataBuilder.setCustomMetadata("Descripcion", metadata.getCustomMetadata("Descripcion"));
-                                                        // Subir el archivoRecogido desde la ruta local al nuevo directorio en Firebase Storage con los metadatos
-                                                        UploadTask uploadTask = nuevoDirectorioRef.putFile(Uri.fromFile(localFile), metadataBuilder.build());
-                                                        uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                                                            @Override
-                                                            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                                                // El archivoRecogido se ha compartido correctamente
-                                                                // Puedes agregar aquí cualquier lógica adicional después de compartir el archivo
-                                                            }
-                                                        }).addOnFailureListener(new OnFailureListener() {
-                                                            @Override
-                                                            public void onFailure(@NonNull Exception e) {
-                                                                // Manejar el error si no se puede subir el archivoRecogido al nuevo directorio
-                                                                Toast.makeText(getContext(), "Error al compartir el archivo", Toast.LENGTH_SHORT).show();
-                                                            }
-                                                        });
-                                                    }
-                                                }).addOnFailureListener(new OnFailureListener() {
-                                                    @Override
-                                                    public void onFailure(@NonNull Exception e) {
-                                                        // Manejar el error si no se pueden obtener los metadatos del archivoRecogido original
-                                                        Toast.makeText(getContext(), "Error al obtener los metadatos del archivoRecogido original", Toast.LENGTH_SHORT).show();
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-                                } else {
-                                    // El correo electrónico no existe en la base de datos
-                                    Toast.makeText(getContext(), "El correo electrónico no existe", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
-                                // Error al consultar la base de datos
-                                Toast.makeText(getContext(), "Error al consultar la base de datos", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }
-                });
-                dialogoCompartir.show();
+                compartirArchivo();
                 return true;
             default:
                 return super.onContextItemSelected(item);
         }
+    }
+
+    private void eliminarArchivo(@NonNull MenuItem item, ArrayList<Archivo> datos) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle("Borrar archivo");
+        builder.setMessage("¿Estás seguro de que quieres borrar el archivo " + archivoRecogido.getNameMetadata() + "?");
+        builder.setPositiveButton("Sí", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                moverArchivoPapelera(item, datos);
+            }
+        });
+        builder.setNegativeButton("No", null);
+        builder.setCancelable(false);
+        builder.create().show();
+    }
+    private void crearDialogo(String title,String mensaje){
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle(title);
+        builder.setMessage(mensaje);
+        builder.setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        builder.setCancelable(false);
+        builder.create().show();
+    }
+    private void compartirArchivo() {
+        final String[] correoElectronico = new String[1];
+
+        // Crear un diálogo con un campo de entrada para solicitar el correo al usuario
+        DialogoCompartir dialogoCompartir = new DialogoCompartir(getContext(), new DialogoCompartir.OnCompartirArchivoListener() {
+            @Override
+            public void onCompartirArchivo(String email) {
+                correoElectronico[0] = email;
+
+                // Consultar la base de datos para verificar si el correo electrónico existe
+                DatabaseReference usuariosRef = FirebaseDatabase.getInstance().getReference("users");
+                Query query = usuariosRef.orderByChild("email").equalTo(correoElectronico[0]);
+
+                query.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        if (dataSnapshot.exists() && !correoElectronico[0].equals(mAuth.getCurrentUser().getEmail())) {
+                            for (DataSnapshot usuarioSnapshot : dataSnapshot.getChildren()) {
+                                String uidUsuarioDestino = usuarioSnapshot.getKey();
+                                StorageReference storageRef = FirebaseStorage.getInstance().getReference();
+                                StorageReference archivoRef = storageRef.child("users/" + uid + "/" + archivoRecogido.getUriArchivo());
+                                archivoRef.updateMetadata(new StorageMetadata.Builder().setCustomMetadata("Compartido", "true").setCustomMetadata("UidUsuarioDestino", uidUsuarioDestino).build()).addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                                    @Override
+                                    public void onSuccess(StorageMetadata storageMetadata) {
+                                        crearDialogo("Compartir archivo","El archivo se ha compartido correctamente con: " + correoElectronico[0]);
+                                    }
+                                });
+                                // Obtener una referencia al directorio local donde se descargará el archivoRecogido
+                                File localDirectory = new File(getContext().getFilesDir(), "archivos_descargados");
+                                if (!localDirectory.exists()) {
+                                    localDirectory.mkdirs();
+                                }
+
+                                // Obtener una referencia al archivoRecogido local donde se guardará el archivoRecogido descargado
+                                File localFile = new File(localDirectory, archivoRecogido.getUriArchivo());
+
+                                // Descargar el archivoRecogido a la ruta local
+                                archivoRef.getFile(localFile).addOnSuccessListener(new OnSuccessListener<FileDownloadTask.TaskSnapshot>() {
+                                    @Override
+                                    public void onSuccess(FileDownloadTask.TaskSnapshot taskSnapshot) {
+                                        // El archivoRecogido se ha descargado correctamente a la ruta local
+
+                                        // Obtener referencia al nuevo directorio en Firebase Storage
+                                        StorageReference nuevoDirectorioRef = FirebaseStorage.getInstance().getReference().child("compartidos/users/" + uidUsuarioDestino + "/" + archivoRecogido.getUriArchivo());
+
+                                        // Obtener metadatos del archivoRecogido original
+                                        archivoRef.getMetadata().addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
+                                            @Override
+                                            public void onSuccess(StorageMetadata metadata) {
+                                                // Establecer los metadatos al nuevo archivoRecogido en la otra ruta
+                                                StorageMetadata.Builder metadataBuilder = new StorageMetadata.Builder();
+                                                metadataBuilder.setCustomMetadata("Name", metadata.getCustomMetadata("Name"));
+                                                metadataBuilder.setCustomMetadata("Extension", metadata.getCustomMetadata("Extension"));
+                                                metadataBuilder.setCustomMetadata("Favorito", metadata.getCustomMetadata("Favorito"));
+                                                metadataBuilder.setCustomMetadata("Autor", metadata.getCustomMetadata("Autor"));
+                                                metadataBuilder.setCustomMetadata("Compartido", metadata.getCustomMetadata("Compartido"));
+                                                metadataBuilder.setCustomMetadata("Description", metadata.getCustomMetadata("Description"));
+                                                // Subir el archivoRecogido desde la ruta local al nuevo directorio en Firebase Storage con los metadatos
+                                                UploadTask uploadTask = nuevoDirectorioRef.putFile(Uri.fromFile(localFile), metadataBuilder.build());
+                                                uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                                                    @Override
+                                                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                                                        // El archivoRecogido se ha compartido correctamente
+                                                        // Puedes agregar aquí cualquier lógica adicional después de compartir el archivo
+                                                    }
+                                                }).addOnFailureListener(new OnFailureListener() {
+                                                    @Override
+                                                    public void onFailure(@NonNull Exception e) {
+                                                        // Manejar el error si no se puede subir el archivoRecogido al nuevo directorio
+                                                        crearDialogo("Error al compartir archivo","El archivo no se ha podido compartir correctamente");
+                                                    }
+                                                });
+                                            }
+                                        }).addOnFailureListener(new OnFailureListener() {
+                                            @Override
+                                            public void onFailure(@NonNull Exception e) {
+                                                // Manejar el error si no se pueden obtener los metadatos del archivoRecogido original
+                                                crearDialogo("Error al compartir archivo","El archivo no se ha podido compartir correctamente");
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        } else {
+                            if(correoElectronico[0].equals(mAuth.getCurrentUser().getEmail())){
+                                crearDialogo("Error al compartir archivo","No puedes compartir un archivo contigo mismo");
+                            }else{
+                                crearDialogo("Error al compartir archivo", "El correo electrónico no existe en la base de datos");
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        // Error al consultar la base de datos
+                        crearDialogo("Error","Error al consultar la base de datos, inténtelo de nuevo más tarde");
+                    }
+                });
+            }
+        });
+        dialogoCompartir.show();
     }
 
 
@@ -353,7 +380,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
                                     @Override
                                     public void onSuccess(Void aVoid) {
                                         // El archivoRecogido original se ha borrado correctamente
-                                        Toast.makeText(getContext(), "Archivo movido al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getContext(), "Archivo enviado a la papelera", Toast.LENGTH_SHORT).show();
 
                                         // Actualizar la lista de datos y notificar al adaptador
                                         datos.remove(item.getGroupId());
@@ -364,7 +391,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
                                         // Manejar el error si no se puede borrar el archivoRecogido original
-                                        Toast.makeText(getContext(), "Error al borrar el archivoRecogido", Toast.LENGTH_SHORT).show();
+                                        crearDialogo("Error al borrar archivo","El archivo no se ha podido borrar correctamente");
                                     }
                                 });
                             }
@@ -372,7 +399,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
                             @Override
                             public void onFailure(@NonNull Exception e) {
                                 // Manejar el error si no se puede subir el archivoRecogido al nuevo directorio
-                                Toast.makeText(getContext(), "Error al mover el archivoRecogido al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                crearDialogo("Error al borrar archivo","El archivo no se ha podido borrar correctamente");
                             }
                         });
                     }
@@ -380,7 +407,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         // Manejar el error si no se pueden obtener los metadatos del archivoRecogido original
-                        Toast.makeText(getContext(), "Error al obtener los metadatos del archivoRecogido original", Toast.LENGTH_SHORT).show();
+                        crearDialogo("Error de servidor","El archivo no se ha podido borrar correctamente, intentelo mas tarde");
                     }
                 });
             }
@@ -389,31 +416,26 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
 
     @Override
     public void onArchivoClick(int position) {
-        Toast.makeText(getContext(), "Archivo seleccionado", Toast.LENGTH_SHORT).show();
-        if (datos.get(position).isCarpeta()) {
-            //Si es una carpeta se abre la carpeta
-            abrirCarpeta(position);
-            Toast.makeText(getContext(), "Carpeta abierta", Toast.LENGTH_SHORT).show();
-        } else {
             //Abro el archivo
             abrirArchivo(position);
+    }
+    public void onStart() {
+        super.onStart();
+        if (datos.size() > 0) {
+            Collections.sort(datos, new Comparator<Archivo>() {
+                @Override
+                public int compare(Archivo o1, Archivo o2) {
+                    return o1.getNameMetadata().compareTo(o2.getNameMetadata());
+                }
+            });
         }
     }
-
     private void abrirArchivo(int position) {
         NavController navController = Navigation.findNavController(getActivity(), R.id.nav_host_fragment_content_home);
         Bundle bundle = new Bundle();
         bundle.putString("ruta", "users/"+uid+"/"+datos.get(position).getUriArchivo());
         bundle.putString("imagen", datos.get(position).getImagen());
         navController.navigate(R.id.nav_archivo_click, bundle);
-    }
-
-    private void abrirCarpeta(int position) {
-        NavController navController = Navigation.findNavController(getActivity(), R.id.nav_host_fragment_content_home);
-        Bundle bundle = new Bundle();
-        bundle.putString("nombreCarpeta", datos.get(position).getNameMetadata());
-        bundle.putString("imagen", datos.get(position).getImagen());
-        navController.navigate(R.id.nav_carpeta, bundle);
     }
 
     @Override
@@ -423,8 +445,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
         String extension = archivoRecogido.getExtension();
         // Crea un objeto StorageMetadata con el nuevo nombre
         if (nuevoNombre.contains(" ")) {
-            Toast.makeText(getContext(), "El nombre no puede contener espacios", Toast.LENGTH_SHORT).show();
-            nuevoNombre = nuevoNombre.replace(" ", "_");
+            nuevoNombre = nuevoNombre.trim();
         }
         if (nuevoNombre.contains(".")) {
             Toast.makeText(getContext(), "El nombre no puede contener puntos", Toast.LENGTH_SHORT).show();
@@ -448,7 +469,7 @@ public class HomeFragment extends Fragment implements DialogoRename.OnNuevoNombr
             }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
-                    Toast.makeText(getContext(), "Error al renombrar el archivo", Toast.LENGTH_SHORT).show();
+                    crearDialogo("Error al renombrar archivo","El archivo no se ha podido renombrar correctamente");
                 }
             });
         } else {

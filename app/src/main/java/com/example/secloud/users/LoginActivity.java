@@ -8,11 +8,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.util.Log;
+import android.util.Patterns;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -38,7 +35,7 @@ import com.google.firebase.database.ValueEventListener;
 import home.HomeActivity;
 
 public class LoginActivity extends AppCompatActivity {
-    EditText email, password;
+    private EditText email, password;
     private FirebaseAuth mAuth;
     private static final int RC_SIGN_IN = 9001;
     private GoogleSignInClient mGoogleSignInClient;
@@ -53,35 +50,59 @@ public class LoginActivity extends AppCompatActivity {
         email = findViewById(R.id.textNumber);
         password = findViewById(R.id.textPassword);
         mAuth = FirebaseAuth.getInstance();
+        email.setText("");
+        password.setText("");
+        //Recojo el intent de la actividad de registro
+        Intent intent = getIntent();
+        if (intent != null) {
+            //Si el intent no es nulo recojo el email y la contraseña
+            String email = intent.getStringExtra("email");
+            //Si el email y la contraseña no son nulos los pongo en los campos correspondientes
+            if (email != null) {
+                this.email.setText(email);
+            }
+        }
+        //Compruebo que no haya nadie logueado mediante correo normal y si lo hay lo mando a la actividad principal
+        if (mAuth.getCurrentUser() != null) {
+            goHome(mAuth.getCurrentUser().getUid());
+        }
 
     }
+
     public void click_login(View view) {
-        if (!email.getText().toString().isEmpty() || !password.getText().toString().isEmpty()) {
+        mAuth=FirebaseAuth.getInstance();
+        if (!email.getText().toString().isEmpty() && !password.getText().toString().isEmpty()) {
             mAuth.signInWithEmailAndPassword(email.getText().toString(), password.getText().toString()).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                 @Override
                 public void onComplete(@NonNull Task<AuthResult> task) {
                     if (task.isSuccessful() && mAuth.getCurrentUser().isEmailVerified()) {
                         goHome(mAuth.getCurrentUser().getUid());
-                    } else {
-                        //Compruebo a ver que ha puesto mal y muestro el error
-                        if(password.getText().toString().isEmpty()){
-                            password.setError("Introduzca una contraseña");
-                        }
-                        if(email.getText().toString().isEmpty()){
-                            email.setError("Introduzca un email");
-                        }
-                        if(!mAuth.getCurrentUser().isEmailVerified()){
-                            email.setError("Verifique su email");
-                        }
                     }
+                }
+            }).addOnFailureListener(this, e -> {
+                //Compruebo si el correo existe en la base de datos
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users");
+                if(!ref.child("email").equals(email.getText().toString())){
+                    email.setError("El email no existe");
+                } else if (!mAuth.getCurrentUser().isEmailVerified()) {
+                    email.setError("El email no está verificado, compruebe su correo");
+                } else{
+                    password.setError("La contraseña es incorrecta");
                 }
             });
         } else {
-            AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
-            builder.setTitle("Error");
-            builder.setMessage("Por favor, rellene todos los campos");
-            builder.setPositiveButton("Aceptar", null);
-            builder.create().show();
+            //Compruebo a ver que ha puesto mal y muestro el error
+            if (password.getText().toString().isEmpty()) {
+                password.setError("Introduzca una contraseña");
+            }else if (email.getText().toString().isEmpty()) {
+                email.setError("Introduzca un email");
+            }else{
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Error");
+                builder.setMessage("Debes rellenar todos los campos");
+                builder.setPositiveButton("Aceptar", null);
+                builder.create().show();
+            }
         }
     }
 
@@ -122,7 +143,6 @@ public class LoginActivity extends AppCompatActivity {
             String email = account.getEmail();
             FirebaseUser currentUser = mAuth.getCurrentUser();
             if (currentUser != null && currentUser.getEmail().equals(email)) {
-                Toast.makeText(LoginActivity.this, "Ya has iniciado sesión con esta cuenta", Toast.LENGTH_SHORT).show();
                 goHome(currentUser.getUid());
                 return;
             }
@@ -133,7 +153,6 @@ public class LoginActivity extends AppCompatActivity {
                 @Override
                 public void onComplete(@NonNull Task<AuthResult> task) {
                     if (task.isSuccessful()) {
-                        Toast.makeText(LoginActivity.this, "Inicio de sesión exitoso", Toast.LENGTH_SHORT).show();
                         String uid = mAuth.getCurrentUser().getUid();
                         FirebaseDatabase database = FirebaseDatabase.getInstance();
                         //Si no existe la base de datos, la crea y si existe, la obtiene
@@ -143,32 +162,42 @@ public class LoginActivity extends AppCompatActivity {
                             @Override
                             public void onDataChange(@NonNull DataSnapshot snapshot) {
                                 if (snapshot.exists()) {
-                                    Toast.makeText(LoginActivity.this, "El usuario ya existe", Toast.LENGTH_SHORT).show();
                                     goHome(uid);
                                 } else {
-                                    Toast.makeText(LoginActivity.this, "El usuario no existe", Toast.LENGTH_SHORT).show();
                                     myRef.child(uid).child("email").setValue(account.getEmail());
                                     myRef.child(uid).child("name").setValue(account.getDisplayName());
                                     myRef.child(uid).child("photo").setValue(account.getPhotoUrl().toString());
-                                    goHome(currentUser.getUid());
+                                    crearDialog("Bienvenido", "Se ha registrado correctamente");
+                                    //Despues de aceptar el dialogo, se va a la pantalla principal
+
+                                    goHome(uid);
                                 }
                             }
 
                             @Override
                             public void onCancelled(@NonNull DatabaseError error) {
-                                Toast.makeText(LoginActivity.this, "Error al acceder a la base de datos", Toast.LENGTH_SHORT).show();
+                                crearDialog("Error", "Ha ocurrido un error al iniciar sesión");
                             }
                         });
                     } else {
-                        Toast.makeText(LoginActivity.this, "Inicio de sesión fallido", Toast.LENGTH_SHORT).show();
+                        crearDialog("Error", "Ha ocurrido un error al iniciar sesión");
                     }
                 }
             });
         } catch (ApiException e) {
-            Toast.makeText(LoginActivity.this, "Inicio de sesión fallido", Toast.LENGTH_SHORT).show();
+            crearDialog("Error", "Ha ocurrido un error al iniciar sesión");
         }
     }
 
+    //Debo poder pasarle una accion o nula para ir a home al aceptar el dialogo
+    public void crearDialog(String titulo, String mensaje) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
+        builder.setTitle(titulo);
+        builder.setMessage(mensaje);
+        builder.setPositiveButton("Aceptar", null);
+        builder.setCancelable(false);
+        builder.create().show();
+    }
 
     public void goHome(String uid) {
         Intent intent = new Intent(this, HomeActivity.class);
@@ -183,6 +212,8 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     public void click_recuperar(View view) {
+        Intent intent = new Intent(this, RecuperarActivity.class);
+        startActivity(intent);
     }
 
     @Override

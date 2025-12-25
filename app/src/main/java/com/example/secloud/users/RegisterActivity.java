@@ -16,7 +16,6 @@ import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Switch;
-import android.widget.Toast;
 
 import com.example.secloud.R;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -160,16 +159,14 @@ public class RegisterActivity extends AppCompatActivity {
                                                         builder.setPositiveButton("Aceptar", new DialogInterface.OnClickListener() {
                                                             @Override
                                                             public void onClick(DialogInterface dialogInterface, int i) {
+                                                                //Le paso el email para que se rellene automáticamente en el login
+                                                                Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                                                                intent.putExtra("email", inputEmail);
+                                                                startActivity(intent);
                                                                 finish();
                                                             }
                                                         });
-                                                        //Si pulsa fuera del diálogo se cierra la actividad
-                                                        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
-                                                            @Override
-                                                            public void onCancel(DialogInterface dialogInterface) {
-                                                                finish();
-                                                            }
-                                                        });
+                                                        builder.setCancelable(false);
                                                         builder.create().show();
                                                     } else {
                                                         // Hubo un error al enviar el correo de verificación
@@ -206,10 +203,4 @@ public class RegisterActivity extends AppCompatActivity {
         }
     }
 
-    private void goHome(String uid) {
-        Intent intent = new Intent(this, HomeActivity.class);
-        intent.putExtra("uid", uid);
-        startActivity(intent);
-        finish();
-    }
 }

@@ -2,7 +2,8 @@
     <!-- Base application theme. -->
     <style name="Base.Theme.SeCloud" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">#91CAF8</item>
+        <item name="colorPrimaryVariant">#000000</item>
     </style>
 
     <style name="Theme.SeCloud" parent="Base.Theme.SeCloud" />
@@ -10,6 +11,7 @@
     <style name="Theme.SeCloud.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
+        <item name="android:statusBarColor">#F8ABAB</item>
     </style>
 
     <style name="Theme.SeCloud.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />

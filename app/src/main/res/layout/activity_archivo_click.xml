@@ -202,7 +202,6 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Editar"
-        android:background="@drawable/button_background"
         android:textColor="@android:color/white" />
 
     <!-- Botones para aceptar y cancelar la edición -->
@@ -219,7 +218,6 @@
             android:layout_weight="1"
             android:text="Aceptar"
             android:visibility="gone"
-            android:background="@drawable/button_background"
             android:textColor="@android:color/white" />
 
         <Button
@@ -229,7 +227,7 @@
             android:layout_weight="1"
             android:text="Cancelar"
             android:visibility="gone"
-            android:background="@drawable/button_background"
+            android:backgroundTint="#F36969"
             android:textColor="@android:color/white" />
 
     </LinearLayout>
@@ -241,7 +239,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:text="Descargar"
-        android:background="@drawable/button_background"
+        android:backgroundTint="#F36969"
         android:textColor="@android:color/white" />
 
 </LinearLayout>

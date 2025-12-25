@@ -5,7 +5,7 @@ import java.io.Serializable;
 public class Archivo implements Serializable {
     private String uriArchivo;
     private String nameMetadata;
-
+    int tamano;
     private String extension;
     private String imagen;
     private String descripcion;
@@ -25,6 +25,14 @@ public class Archivo implements Serializable {
         this.isFavorito = isFavorito;
         this.isCompartido = isCompartido;
         this.isCarpeta = isCarpeta;
+    }
+
+    public int getTamano() {
+        return tamano;
+    }
+
+    public void setTamano(int tamano) {
+        this.tamano = tamano;
     }
 
     public Archivo(String uriArchivo, String nameMetadata) {

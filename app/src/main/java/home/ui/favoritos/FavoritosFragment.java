@@ -1,5 +1,7 @@
 package home.ui.favoritos;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -10,9 +12,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.secloud.R;
 import com.example.secloud.databinding.FragmentFavoritosBinding;
 
 import adaptadores.AdaptadorExternoFavs;
@@ -43,7 +48,6 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
     private FirebaseAuth mAuth = FirebaseAuth.getInstance();
     private String uid = mAuth.getCurrentUser().getUid();
     private Archivo archivoRecogido;
-    ;
     private ArrayList<Archivo> datosFavs = new ArrayList<>();
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -107,12 +111,25 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                 return true;
             case BORRAR:
                 archivoRecogido = datosFavs.get(item.getGroupId());
-                moverArchivoPapelera(item, datosFavs);
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                builder.setTitle("Borrar archivo");
+                builder.setMessage("¿Estás seguro de que quieres borrar el archivo " + archivoRecogido.getNameMetadata() + "?");
+                builder.setPositiveButton("Sí", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        moverArchivoPapelera(item, datosFavs);
+                    }
+                });
+                builder.setNegativeButton("No", null);
+                builder.setCancelable(false);
+                builder.create().show();
                 return true;
             default:
                 return super.onContextItemSelected(item);
         }
     }
+
+
 
     private void moverArchivoPapelera(@NonNull MenuItem item, ArrayList<Archivo> datos) {
         StorageReference storageRef = FirebaseStorage.getInstance().getReference();
@@ -157,7 +174,7 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                                     @Override
                                     public void onSuccess(Void aVoid) {
                                         // El archivoRecogido original se ha borrado correctamente
-                                        Toast.makeText(getContext(), "Archivo movido al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                        Toast.makeText(getContext(), "Archivo movido a la papelera", Toast.LENGTH_SHORT).show();
 
                                         // Actualizar la lista de datos y notificar al adaptador
                                         datos.remove(item.getGroupId());
@@ -167,7 +184,7 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
                                         // Manejar el error si no se puede borrar el archivoRecogido original
-                                        Toast.makeText(getContext(), "Error al borrar el archivoRecogido", Toast.LENGTH_SHORT).show();
+                                        crearDialog("Error", "No se ha podido borrar el archivo", "Aceptar");
                                     }
                                 });
                             }
@@ -175,7 +192,7 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                             @Override
                             public void onFailure(@NonNull Exception e) {
                                 // Manejar el error si no se puede subir el archivoRecogido al nuevo directorio
-                                Toast.makeText(getContext(), "Error al mover el archivoRecogido al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                crearDialog("Error", "No se ha podido eliminar el archivo", "Aceptar");
                             }
                         });
                     }
@@ -183,7 +200,7 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                     @Override
                     public void onFailure(@NonNull Exception e) {
                         // Manejar el error si no se pueden obtener los metadatos del archivoRecogido original
-                        Toast.makeText(getContext(), "Error al obtener los metadatos del archivoRecogido original", Toast.LENGTH_SHORT).show();
+                        crearDialog("Error", "No se han podido obtener los metadatos del archivoRecogido original", "Aceptar");
                     }
                 });
             }
@@ -191,7 +208,16 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
     }
     @Override
     public void onArchivoClick(int position) {
+        //Abro el archivo
+        abrirArchivo(position);
+    }
 
+    private void abrirArchivo(int position) {
+        NavController navController = Navigation.findNavController(getActivity(), R.id.nav_host_fragment_content_home);
+        Bundle bundle = new Bundle();
+        bundle.putString("ruta", "users/"+uid+"/"+datosFavs.get(position).getUriArchivo());
+        bundle.putString("imagen", datosFavs.get(position).getImagen());
+        navController.navigate(R.id.nav_archivo_click, bundle);
     }
     @Override
     public void onNuevoNombreArchivo(String nuevoNombre) {
@@ -200,15 +226,14 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
         String extension = archivoRecogido.getExtension();
         // Crea un objeto StorageMetadata con el nuevo nombre
         if (nuevoNombre.contains(" ")) {
-            Toast.makeText(getContext(), "El nombre no puede contener espacios", Toast.LENGTH_SHORT).show();
-            nuevoNombre = nuevoNombre.replace(" ", "_");
+            nuevoNombre = nuevoNombre.trim();
         }
         if (nuevoNombre.contains(".")) {
             Toast.makeText(getContext(), "El nombre no puede contener puntos", Toast.LENGTH_SHORT).show();
             return;
         }
         StorageMetadata metadata = new StorageMetadata.Builder()
-                .setCustomMetadata("Name", nuevoNombre + "." + extension)
+                .setCustomMetadata("Name", nuevoNombre)
                 .build();
 
         // Actualiza los metadatos del archivo para cambiar su nombre
@@ -230,8 +255,16 @@ public class FavoritosFragment extends Fragment implements DialogoRename.OnNuevo
                 .addOnFailureListener(new OnFailureListener() {
                     @Override
                     public void onFailure(@NonNull Exception e) {
-                        Toast.makeText(getContext(), "Error al renombrar el archivo", Toast.LENGTH_SHORT).show();
+                        crearDialog("Error", "No se ha podido renombrar el archivo", "Aceptar");
                     }
                 });
+    }
+    private void crearDialog(String title, String message, String positiveButton) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle(title);
+        builder.setCancelable(false);
+        builder.setMessage(message);
+        builder.setPositiveButton(positiveButton,null);
+        builder.create().show();
     }
 }

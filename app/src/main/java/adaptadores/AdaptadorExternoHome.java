@@ -60,6 +60,44 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
         return datos;
     }
 
+    public void ordenarPorNombre() {
+        Collections.sort(datos, new Comparator<Archivo>() {
+            @Override
+            public int compare(Archivo archivo1, Archivo archivo2) {
+                return archivo1.getNameMetadata().compareTo(archivo2.getNameMetadata());
+            }
+        });
+        notifyDataSetChanged();
+    }
+
+    public void ordenarPorFecha() {
+        Collections.sort(datos, new Comparator<Archivo>() {
+            @Override
+            public int compare(Archivo archivo1, Archivo archivo2) {
+                //paso las fecha a long para poder compararlas
+                long fecha1 = Long.parseLong(archivo1.getFecha_subida());
+                long fecha2 = Long.parseLong(archivo2.getFecha_subida());
+                return Long.compare(fecha1,fecha2);
+            }
+        });
+        notifyDataSetChanged();
+    }
+
+    public void ordenarPorExtension() {
+        Collections.sort(datos, new Comparator<Archivo>() {
+            @Override
+            public int compare(Archivo archivo1, Archivo archivo2) {
+                return archivo1.getExtension().compareTo(archivo2.getExtension());
+            }
+        });
+        notifyDataSetChanged();
+    }
+
+    public void setData(ArrayList<Archivo> archivos) {
+        this.datos = archivos;
+        notifyDataSetChanged();
+    }
+
     public interface OnArchivoClickListener {
         void onArchivoClick(int position);
     }
@@ -127,7 +165,7 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
                 case "pps":
                 case "ppt":
                 case "pptx":
-                    holder.ivImagen.setImageResource(R.drawable.icon_pdf);
+                    holder.ivImagen.setImageResource(R.drawable.icon_pdf2);
                     break;
                 case "docx":
                 case "doc":
@@ -136,8 +174,8 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
                 case "tex":
                 case "wpd":
                 case "wps":
+                    holder.ivImagen.setImageResource(R.drawable.icon_word);
                     //Quiero cargar una vista previa del archivo docx en el ImageView
-
                     break;
                 case "txt":
                 case "csv":
@@ -155,7 +193,7 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
                 case "cs":
                 case "vb":
                 case "sql":
-
+                    holder.ivImagen.setImageResource(R.drawable.icon_txt);
                     break;
                 case "png":
                 case "jpg":
@@ -174,7 +212,7 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
                 case "mp3":
                 case "wav":
                 case "ogg":
-                    holder.ivImagen.setImageResource(R.drawable.icon_audio);
+                    holder.ivImagen.setImageResource(R.drawable.icon_audio2);
                     break;
                 case "mp4":
                 case "avi":
@@ -183,13 +221,10 @@ public class AdaptadorExternoHome extends RecyclerView.Adapter<AdaptadorExternoH
                 case "flv":
                 case "3gp":
                 case "mkv":
-                    holder.ivImagen.setImageResource(R.drawable.icon_imagen);
-                    break;
-                case "carpeta":
-                    holder.ivImagen.setImageResource(R.drawable.carpeta);
+                    holder.ivImagen.setImageResource(R.drawable.icon_video);
                     break;
                 default:
-                    holder.ivImagen.setImageResource(R.drawable.placeholder_image);
+                    holder.ivImagen.setImageResource(R.drawable.icon_txt);
                     break;
             }
         }

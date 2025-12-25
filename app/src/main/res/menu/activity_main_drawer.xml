@@ -27,6 +27,11 @@
                 android:icon="@drawable/icon_profile"
                 android:title="@string/profile" />
 
+                <item
+                    android:id="@+id/nav_help"
+                    android:icon="@drawable/contact_support"
+                    android:title="@string/help" />
+
             <item
                 android:id="@+id/nav_signOut"
                 android:icon="@android:drawable/ic_lock_power_off"

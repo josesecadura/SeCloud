@@ -1,6 +1,7 @@
 package home.ui.bin;
 
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -81,6 +82,23 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
                         Archivo archivo = new Archivo(storageMetadata.getName(), nombre, extension, favorito,false,false);
                         archivo.setDescripcion(descripcion);
                         archivo.setAutor(autor);
+                        //Recojo el metadata de fecha de subida si han pasado mas de 30 dias lo elimino de la base de datos
+                        if(storageMetadata.getCreationTimeMillis() + 2592000000L < System.currentTimeMillis()){
+                            StorageReference desertRef = storageRef.child(storageMetadata.getName());
+                            desertRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                                @Override
+                                public void onSuccess(Void aVoid) {
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                                    builder.setTitle("Archivo eliminado");
+                                    builder.setMessage("El archivo " + storageMetadata.getName() + " ha sido eliminado de la papelera por haber pasado mas de 30 dias");
+                                    builder.setPositiveButton("Aceptar", null);
+                                    builder.create().show();
+                                    //Obviamente vuelvo al for para que no se añada a la lista
+
+                                }
+                            });
+                            return;
+                        }
                         datos.add(archivo);
                         ((AdaptadorExternoBin) binding.recyclerView.getAdapter()).notifyDataSetChanged();
                         StorageReference storageRef1 = FirebaseStorage.getInstance().getReference();
@@ -111,22 +129,33 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
         switch (item.getItemId()) {
             case BORRAR:
                 //Elimino el archivo de la papelera
-                archivoRecogido = datos.get(item.getGroupId());
-                StorageReference storageRef = storage.getReference();
-                StorageReference desertRef = storageRef.child("recycler_bin/" + uid + "/" + archivoRecogido.getUriArchivo());
-                desertRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+                builder.setTitle("Borrar archivo");
+                builder.setMessage("¿Estas seguro de que quieres borrar el archivo?, no lo podrás recuperar");
+                builder.setCancelable(false);
+                builder.setPositiveButton("Si", new DialogInterface.OnClickListener() {
                     @Override
-                    public void onSuccess(Void aVoid) {
-                        Toast.makeText(getContext(), "Archivo eliminado", Toast.LENGTH_SHORT).show();
-                        datos.remove(item.getGroupId());
-                        ((AdaptadorExternoBin) binding.recyclerView.getAdapter()).notifyDataSetChanged();
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        Toast.makeText(getContext(), "Error al eliminar el archivo", Toast.LENGTH_SHORT).show();
+                    public void onClick(DialogInterface dialog, int which) {
+                        archivoRecogido = datos.get(item.getGroupId());
+                        StorageReference storageRef = storage.getReference();
+                        StorageReference desertRef = storageRef.child("recycler_bin/" + uid + "/" + archivoRecogido.getUriArchivo());
+                        desertRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+
+                                datos.remove(item.getGroupId());
+                                ((AdaptadorExternoBin) binding.recyclerView.getAdapter()).notifyDataSetChanged();
+                            }
+                        }).addOnFailureListener(new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception exception) {
+                                crearDialogo("Error al borrar el archivo", "No se ha podido borrar el archivo, intentelo de nuevo mas tarde");
+                            }
+                        });
                     }
                 });
+                builder.setNegativeButton("No", null);
+                builder.create().show();
                 return true;
             default:
                 return super.onContextItemSelected(item);
@@ -187,7 +216,7 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
                                         @Override
                                         public void onSuccess(Void aVoid) {
                                             // El archivo original se ha borrado correctamente
-                                            Toast.makeText(getContext(), "Archivo movido al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(getContext(), "Archivo restaurado correctamente", Toast.LENGTH_SHORT).show();
                                             AdaptadorExternoHome adaptadorExternoHome = AdaptadorExternoHome.getInstancia();
                                             adaptadorExternoHome.agregarArchivo(archivo);
                                             adaptadorExternoHome.notifyDataSetChanged();
@@ -199,7 +228,7 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
                                         @Override
                                         public void onFailure(@NonNull Exception e) {
                                             // Manejar el error si no se puede borrar el archivo original
-                                            Toast.makeText(getContext(), "Error al borrar el archivo", Toast.LENGTH_SHORT).show();
+                                            crearDialogo("Error", "Error al borrar el archivo original");
                                         }
                                     });
                                 }
@@ -207,15 +236,14 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
                                 @Override
                                 public void onFailure(@NonNull Exception e) {
                                     // Manejar el error si no se puede subir el archivo al nuevo directorio
-                                    Toast.makeText(getContext(), "Error al mover el archivo al nuevo directorio", Toast.LENGTH_SHORT).show();
+                                    crearDialogo("Error", "Error al subir el archivo al nuevo directorio");
                                 }
                             });
                         }
                     }).addOnFailureListener(new OnFailureListener() {
                         @Override
                         public void onFailure(@NonNull Exception e) {
-                            // Manejar el error si no se pueden obtener los metadatos del archivo original
-                            Toast.makeText(getContext(), "Error al obtener los metadatos del archivo original", Toast.LENGTH_SHORT).show();
+                            crearDialogo("Error", "Error al obtener los metadatos del archivo");
                         }
                     });
                 }
@@ -227,6 +255,15 @@ public class PapeleraFragment extends Fragment implements AdaptadorExternoBin.On
         });
         builder.create().show();
     }
-
+    private void crearDialogo(String title,String mensaje){
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle(title);
+        builder.setMessage(mensaje);
+        builder.setPositiveButton("Aceptar", (dialog, which) -> {
+            //Cierro el dialog
+            dialog.dismiss();
+        });
+        builder.create().show();
+    }
 
 }

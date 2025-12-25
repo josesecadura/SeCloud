@@ -38,4 +38,5 @@
     <string name="share">Share</string>
     <string name="profile">Profile</string>
     <string name="show_password">Show password</string>
+    <string name="help">Help</string>
 </resources>

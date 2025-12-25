@@ -13,6 +13,8 @@ import android.graphics.Shader;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.provider.MediaStore;
+import android.text.Html;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Menu;
@@ -23,8 +25,10 @@ import android.widget.Toast;
 
 
 import com.example.secloud.R;
+
 import adaptadores.AdaptadorExternoHome;
 import modelos.Archivo;
+
 import com.example.secloud.users.LoginActivity;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -53,10 +57,20 @@ import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Transformation;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 import dialogs.DialogoNameFolder;
 
 public class HomeActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, DialogoNameFolder.OnNombreCarpeta {
 
+    private static final int REQUEST_GALLERY = 102;
+    private static final int REQUEST_FILES = 101;
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityHomeBinding binding;
     private FirebaseStorage storage;
@@ -71,6 +85,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
     private Runnable signOutRunnable;
     private String autor;
     private DrawerLayout drawer;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,7 +109,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         NavigationView navigationView = binding.navView;
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
-        mAppBarConfiguration = new AppBarConfiguration.Builder(R.id.nav_home, R.id.nav_favoritos, R.id.nav_papelera,R.id.nav_shared,R.id.nav_profile).setOpenableLayout(drawer).build();
+        mAppBarConfiguration = new AppBarConfiguration.Builder(R.id.nav_home, R.id.nav_favoritos, R.id.nav_papelera,R.id.nav_help, R.id.nav_shared, R.id.nav_profile).setOpenableLayout(drawer).build();
         navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_home);
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
@@ -120,30 +135,31 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 int itemId = item.getItemId();
                 if (itemId == R.id.menu_upload_file) {
                     // Lógica para subir un archivo aquí
-                    Intent intent = new Intent();
-                    intent.setType("*/*");
-                    intent.setAction(Intent.ACTION_GET_CONTENT);
-                    startActivityForResult(Intent.createChooser(intent, "Selecciona un archivo"), 1);
-                    return true;
-                } else if (itemId == R.id.menu_create_folder) {
-                    Toast.makeText(getApplicationContext(), "Crear carpeta", Toast.LENGTH_SHORT).show();
-                    DialogoNameFolder dialogoNameFolder = new DialogoNameFolder(HomeActivity.this, HomeActivity.this);
-                    dialogoNameFolder.show();
+                    subirArchivo();
                     return true;
                 } else if (itemId == R.id.menu_upload_photo) {
                     //Hago un intent para abrir la galeria del usuario en vez de los archivos
-                    Intent intent = new Intent();
-                    intent.setType("image/*");
-                    intent.setAction(Intent.ACTION_GET_CONTENT);
-                    startActivityForResult(
-                            Intent.createChooser(intent, "Seleccione una imagen"),
-                            2);
+                    openGallery();
                     return true;
                 }
                 return false;
             }
         });
         popupMenu.show();
+    }
+
+    private void subirArchivo() {
+        //Un intent para abrir unicamente archivos del telefono no fotos
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("*/*");
+        startActivityForResult(Intent.createChooser(intent, "Selecciona un archivo"), REQUEST_FILES);
+    }
+
+
+    private void openGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(
+                Intent.createChooser(intent,"Abrir galeria"), REQUEST_GALLERY);
     }
 
     @Override
@@ -180,9 +196,9 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         ref.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
-                autor = snapshot.child("name").getValue().toString();
-                String email = snapshot.child("email").getValue().toString();
-                String foto="";
+                if (snapshot.hasChild("name"))
+                    autor = snapshot.child("name").getValue().toString();
+                String foto = "";
                 //Cargo los datos del usuario en el header del navigation drawer
                 View headerView = binding.navView.getHeaderView(0);
                 TextView nombreUsuario = headerView.findViewById(R.id.nav_header_username);
@@ -214,7 +230,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                             return "circle";
                         }
                     };
-
+                    if (snapshot.hasChild("email")) {
+                        String email = snapshot.child("email").getValue().toString();
+                        emailUsuario.setText(email);
+                    }
                     Picasso.get()
                             .load(foto)
                             .fit() // Ajustar la imagen al tamaño del ImageView
@@ -222,11 +241,10 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                             .transform(transformation) // Aplicar la transformación circular
                             .placeholder(R.drawable.placeholder_image)
                             .into(fotoUsuario);
-                }else{
+                } else {
                     fotoUsuario.setImageResource(R.drawable.user_default);
                 }
                 nombreUsuario.setText(autor);
-                emailUsuario.setText(email);
             }
 
             @Override
@@ -237,12 +255,13 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+
     //Método que se ejecuta cuando el usuario selecciona un archivo
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         //Compruebo que el usuario ha seleccionado un archivo
-        if (requestCode == 1 && resultCode == RESULT_OK) {
+        if (requestCode == REQUEST_FILES && resultCode == RESULT_OK) {
             //Obtengo la uri del archivo seleccionado
             Uri uri = data.getData();
             //Obtengo el nombre del archivo
@@ -250,7 +269,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             //Obtengo el tipo del archivo
             ContentResolver cR = getContentResolver();
             String type = cR.getType(uri);
-            Toast.makeText(this, type, Toast.LENGTH_SHORT).show();
             //Con el nombre del archivo mas el uid del usuario creo la ruta a guardar en la base de datos
             Archivo archivo = new Archivo(nombreArchivo, "", "", false, false, false);
             storageRef = storage.getReference().child("users/" + uid + "/" + nombreArchivo);
@@ -262,7 +280,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 @Override
                 public void onFailure(@NonNull Exception exception) {
                     //Si no se ha subido correctamente, muestro un mensaje de error
-                    Toast.makeText(HomeActivity.this, "Error al subir el archivo", Toast.LENGTH_SHORT).show();
+                    mensajeError();
                 }
             }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
@@ -302,7 +320,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
                 }
             });
-        } else if (requestCode == 2 && resultCode == RESULT_OK) {
+        } else if (requestCode == REQUEST_GALLERY && resultCode == RESULT_OK) {
             //Obtengo la uri del archivo seleccionado
             Uri uri = data.getData();
             //Obtengo el nombre del archivo
@@ -310,7 +328,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             //Obtengo el tipo del archivo
             ContentResolver cR = getContentResolver();
             String type = cR.getType(uri);
-            Toast.makeText(this, type, Toast.LENGTH_SHORT).show();
             //Con el nombre del archivo mas el uid del usuario creo la ruta a guardar en la base de datos
             Archivo archivo = new Archivo(nombreArchivo, "", "", false, false, false);
             storageRef = storage.getReference().child("users/" + uid + "/" + nombreArchivo);
@@ -321,7 +338,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                 @Override
                 public void onFailure(@NonNull Exception exception) {
                     //Si no se ha subido correctamente, muestro un mensaje de error
-                    Toast.makeText(HomeActivity.this, "Error al subir el archivo", Toast.LENGTH_SHORT).show();
+                    mensajeError();
                 }
             }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
@@ -335,12 +352,6 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
                     // Obtener la extensión del archivo
                     String extension = type.split("/")[1];
                     archivo.setNameMetadata(name);
-                    if (extension.contains("vnd")) {
-                        extension = "docx";
-                    }
-                    if (extension.contains("plain")) {
-                        extension = "txt";
-                    }
                     archivo.setExtension(extension);
                     // Añadir los metadatos al archivo
                     StorageMetadata metadata = new StorageMetadata.Builder()
@@ -358,8 +369,16 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
                 }
             });
-
         }
+    }
+
+    private void mensajeError() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(HomeActivity.this);
+        builder.setTitle("Error");
+        builder.setMessage("No se ha podido subir el archivo");
+        builder.setPositiveButton("Aceptar", null);
+        builder.setCancelable(false);
+        builder.create().show();
     }
 
     @Override
@@ -367,6 +386,44 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.home, menu);
         return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId()==R.id.ordenar){
+            //Hago un dialog con varias opciones para ver de que manera quiere ordenar el usuario
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Ordenar por");
+            String[] opciones = {"Nombre", "Fecha", "Extension"};
+            builder.setItems(opciones, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    //Según la opción seleccionada, ordeno el recycler view
+                    AdaptadorExternoHome adaptadorExternoHome = AdaptadorExternoHome.getInstancia();
+                    switch (which){
+                        case 0:
+                            adaptadorExternoHome.ordenarPorNombre();
+                            break;
+                        case 1:
+                            adaptadorExternoHome.ordenarPorFecha();
+                            break;
+                        case 2:
+                            adaptadorExternoHome.ordenarPorExtension();
+                            break;
+                    }
+                }
+            });
+            builder.create().show();
+        }
+        if (item.getItemId()==R.id.action_info){
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Información");
+            builder.setMessage(Html.fromHtml("Aplicación desarrollada por Jose Secadura del Olmo como proyecto de fin de grado de DAM en el año 2023 en el CPIFP Los Enlaces de Zaragoza (España) <br>" +
+                    "<b>No tiene finalidad comercial</b>"));
+            builder.setPositiveButton("Aceptar", null);
+            builder.create().show();
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -388,7 +445,7 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
 
     @SuppressLint("NonConstantResourceId")
     private void selectItemNav(MenuItem item) {
-        if(item.getItemId()==R.id.nav_signOut){
+        if (item.getItemId() == R.id.nav_signOut) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Cerrar sesión");
             builder.setMessage("¿Estás seguro de que quieres cerrar sesión?");
@@ -403,26 +460,37 @@ public class HomeActivity extends AppCompatActivity implements NavigationView.On
             });
             builder.setNegativeButton("No", null);
             builder.create().show();
-        }else if(item.getItemId()==R.id.nav_home){
+        } else if (item.getItemId() == R.id.nav_home) {
             binding.appBarHome.uploadFiles.setVisibility(View.VISIBLE);
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(true);
             navController.navigate(R.id.nav_home);
-        }else if (item.getItemId()==R.id.nav_favoritos) {
+        } else if (item.getItemId() == R.id.nav_favoritos) {
             binding.appBarHome.uploadFiles.setVisibility(View.GONE);
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(false);
             navController.navigate(R.id.nav_favoritos);
             //pongo visible gone el floating action button
-        }else if (item.getItemId()==R.id.nav_shared) {
+        } else if (item.getItemId() == R.id.nav_shared) {
             binding.appBarHome.uploadFiles.setVisibility(View.GONE);
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(false);
             navController.navigate(R.id.nav_shared);
-        }else if (item.getItemId()==R.id.nav_papelera) {
+        } else if (item.getItemId() == R.id.nav_papelera) {
             navController.navigate(R.id.nav_papelera);
             binding.appBarHome.uploadFiles.setVisibility(View.GONE);
-        }else if(item.getItemId()==R.id.nav_profile){
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(false);
+        } else if (item.getItemId() == R.id.nav_profile) {
             //Creo un dialogo para que el usuario introduzca el nombre de la carpeta
             navController.navigate(R.id.nav_profile);
             binding.appBarHome.uploadFiles.setVisibility(View.GONE);
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(false);
+        }else if(item.getItemId() == R.id.nav_help) {
+            //Creo un dialogo para que el usuario introduzca el nombre de la carpeta
+            navController.navigate(R.id.nav_help);
+            binding.appBarHome.uploadFiles.setVisibility(View.GONE);
+            binding.appBarHome.toolbar.getMenu().findItem(R.id.ordenar).setVisible(false);
         }
         //Cierro el drawer
         drawer.closeDrawer(GravityCompat.START);
+        //Quiero que en el menu desaparezca un elemento
     }
 
 

@@ -5,12 +5,9 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -22,10 +19,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.secloud.R;
 import com.example.secloud.databinding.FragmentSharedBinding;
-import adaptadores.AdaptadorExternoBin;
+
 import adaptadores.AdaptadorExternoShared;
 import dialogs.DialogoCompartir;
 import modelos.Archivo;
+
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
@@ -58,6 +56,7 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
     private Archivo archivoRecogido;
     private ArrayList<Archivo> datos = new ArrayList<>();
     private AdaptadorExternoShared adaptadorExternoShared;
+
     @SuppressLint("RestrictedApi")
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
@@ -69,7 +68,7 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
         datos.clear();
         final RecyclerView recyclerView = binding.recyclerViewShared;
         //Elimino el boton flotante uploadFiles
-        adaptadorExternoShared =new AdaptadorExternoShared(datos);
+        adaptadorExternoShared = new AdaptadorExternoShared(datos);
         adaptadorExternoShared.setOnArchivoClickListener(this);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerView.setAdapter(adaptadorExternoShared);
@@ -80,7 +79,7 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
 
     private void cargarDatosPapelera() {
         FirebaseStorage storage = FirebaseStorage.getInstance();
-        StorageReference storageRef = storage.getReference().child("compartidos/users/"+uid+"/");
+        StorageReference storageRef = storage.getReference().child("compartidos/users/" + uid + "/");
 
         Task<ListResult> listResultTask = storageRef.listAll();
         listResultTask.addOnCompleteListener(task -> {
@@ -92,11 +91,10 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
                         String extension = storageMetadata.getCustomMetadata("Extension");
                         String autor = storageMetadata.getCustomMetadata("Autor");
                         String descripcion = storageMetadata.getCustomMetadata("Description");
-                        Archivo archivo = new Archivo(storageMetadata.getName(), nombre, extension, false,false,false);
+                        Archivo archivo = new Archivo(storageMetadata.getName(), nombre, extension, false, false, false);
                         archivo.setAutor(autor);
                         archivo.setDescripcion(descripcion);
                         datos.add(archivo);
-                        Toast.makeText(getContext(), datos.toString()+"", Toast.LENGTH_SHORT).show();
                         adaptadorExternoShared.notifyDataSetChanged();
                         StorageReference storageRef1 = FirebaseStorage.getInstance().getReference();
                         String path = storageMetadata.getPath();
@@ -119,41 +117,12 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
         binding = null;
     }
 
-    public boolean onContextItemSelected(@NonNull MenuItem item) {
-        final int BORRAR = 122;
-        FirebaseStorage storage = FirebaseStorage.getInstance();
-        ArrayList<Archivo> datos = ((AdaptadorExternoBin) binding.recyclerViewShared.getAdapter()).getDatos();
-        switch (item.getItemId()) {
-            case BORRAR:
-                //Elimino el archivo de la papelera
-                archivoRecogido = datos.get(item.getGroupId());
-                StorageReference storageRef = storage.getReference();
-                StorageReference desertRef = storageRef.child("recycler_bin/" + uid + "/" + archivoRecogido.getUriArchivo());
-                desertRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-                        Toast.makeText(getContext(), "Archivo eliminado", Toast.LENGTH_SHORT).show();
-                        datos.remove(item.getGroupId());
-                        ((AdaptadorExternoShared) binding.recyclerViewShared.getAdapter()).notifyDataSetChanged();
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception exception) {
-                        Toast.makeText(getContext(), "Error al eliminar el archivo", Toast.LENGTH_SHORT).show();
-                    }
-                });
-                return true;
-            default:
-                return super.onContextItemSelected(item);
-        }
-    }
-
 
     @Override
     public void onArchivoClick(int position) {
         NavController navController = Navigation.findNavController(getActivity(), R.id.nav_host_fragment_content_home);
         Bundle bundle = new Bundle();
-        bundle.putString("ruta", "compartidos/users/"+uid+"/"+datos.get(position).getUriArchivo());
+        bundle.putString("ruta", "compartidos/users/" + uid + "/" + datos.get(position).getUriArchivo());
         bundle.putString("imagen", datos.get(position).getImagen());
         navController.navigate(R.id.nav_archivo_click, bundle);
     }
@@ -170,15 +139,11 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
                 //Elimino el archivo de la base de datos de compartidos
                 FirebaseStorage storage = FirebaseStorage.getInstance();
                 StorageReference storageRef = storage.getReference();
-                StorageReference desertRef = storageRef.child("compartidos/users/"+uid+"/"+archivo.getUriArchivo());
+                StorageReference desertRef = storageRef.child("compartidos/users/" + uid + "/" + archivo.getUriArchivo());
                 desertRef.delete().addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-                        builder.setTitle("Archivo eliminado");
-                        builder.setMessage("El archivo se ha eliminado de tus compartidos");
-                        builder.setPositiveButton("Aceptar", null);
-                        builder.create().show();
+                        Toast.makeText(getContext(), "Archivo eliminado de tus compartidos", Toast.LENGTH_SHORT).show();
                         datos.remove(archivo);
                         ((AdaptadorExternoShared) binding.recyclerViewShared.getAdapter()).notifyDataSetChanged();
                     }
@@ -216,17 +181,12 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
                 query.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot.exists()) {
+                        if (dataSnapshot.exists() && !correoElectronico[0].equals(mAuth.getCurrentUser().getEmail())) {
                             for (DataSnapshot usuarioSnapshot : dataSnapshot.getChildren()) {
                                 String uidUsuarioDestino = usuarioSnapshot.getKey();
                                 StorageReference storageRef = FirebaseStorage.getInstance().getReference();
                                 StorageReference archivoRef = storageRef.child("compartidos/users/" + uid + "/" + archivoRecogido.getUriArchivo());
-                                archivoRef.updateMetadata(new StorageMetadata.Builder().setCustomMetadata("Compartido", "true").setCustomMetadata("UidUsuarioDestino", uidUsuarioDestino).build()).addOnSuccessListener(new OnSuccessListener<StorageMetadata>() {
-                                    @Override
-                                    public void onSuccess(StorageMetadata storageMetadata) {
-                                        Toast.makeText(getContext(), "Archivo compartido con éxito", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                                archivoRef.updateMetadata(new StorageMetadata.Builder().setCustomMetadata("Compartido", "true").setCustomMetadata("UidUsuarioDestino", uidUsuarioDestino).build());
                                 // Obtener una referencia al directorio local donde se descargará el archivoRecogido
                                 File localDirectory = new File(getContext().getFilesDir(), "archivos_descargados");
                                 if (!localDirectory.exists()) {
@@ -256,47 +216,58 @@ public class CompartirFragment extends Fragment implements AdaptadorExternoShare
                                                 metadataBuilder.setCustomMetadata("Favorito", metadata.getCustomMetadata("Favorito"));
                                                 metadataBuilder.setCustomMetadata("Autor", metadata.getCustomMetadata("Autor"));
                                                 metadataBuilder.setCustomMetadata("Compartido", metadata.getCustomMetadata("Compartido"));
-                                                metadataBuilder.setCustomMetadata("Descripcion", metadata.getCustomMetadata("Descripcion"));
+                                                metadataBuilder.setCustomMetadata("Description", metadata.getCustomMetadata("Description"));
                                                 // Subir el archivoRecogido desde la ruta local al nuevo directorio en Firebase Storage con los metadatos
                                                 UploadTask uploadTask = nuevoDirectorioRef.putFile(Uri.fromFile(localFile), metadataBuilder.build());
                                                 uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                                                     @Override
                                                     public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                                                        // El archivoRecogido se ha compartido correctamente
-                                                        // Puedes agregar aquí cualquier lógica adicional después de compartir el archivo
+                                                        crearDialog("Archivo compartido", "El archivo se ha compartido con éxito a " + correoElectronico[0], "Aceptar");
                                                     }
                                                 }).addOnFailureListener(new OnFailureListener() {
                                                     @Override
                                                     public void onFailure(@NonNull Exception e) {
                                                         // Manejar el error si no se puede subir el archivoRecogido al nuevo directorio
-                                                        Toast.makeText(getContext(), "Error al compartir el archivo", Toast.LENGTH_SHORT).show();
+                                                        crearDialog("Error al compartir el archivo", "No se ha podido compartir el archivo", "Aceptar");
                                                     }
                                                 });
                                             }
                                         }).addOnFailureListener(new OnFailureListener() {
                                             @Override
                                             public void onFailure(@NonNull Exception e) {
-                                                // Manejar el error si no se pueden obtener los metadatos del archivoRecogido original
-                                                Toast.makeText(getContext(), "Error al obtener los metadatos del archivoRecogido original", Toast.LENGTH_SHORT).show();
+                                                crearDialog("Error al compartir el archivo", "No se ha podido compartir el archivo", "Aceptar");
                                             }
                                         });
                                     }
                                 });
                             }
                         } else {
-                            // El correo electrónico no existe en la base de datos
-                            Toast.makeText(getContext(), "El correo electrónico no existe", Toast.LENGTH_SHORT).show();
+                            if (email.equalsIgnoreCase(mAuth.getCurrentUser().getEmail())) {
+                                crearDialog("Error al compartir el archivo", "No puedes compartir un archivo contigo mismo", "Aceptar");
+                            } else {
+                                // El correo electrónico no existe en la base de datos
+                                crearDialog("Correo electrónico no encontrado", "El correo electrónico introducido no existe en la base de datos", "Aceptar");
+                            }
                         }
                     }
 
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
                         // Error al consultar la base de datos
-                        Toast.makeText(getContext(), "Error al consultar la base de datos", Toast.LENGTH_SHORT).show();
+                        crearDialog("Error al consultar la base de datos", "No se ha podido consultar la base de datos", "Aceptar");
                     }
                 });
             }
         });
         dialogoCompartir.show();
+    }
+
+    private void crearDialog(String titulo, String mensaje, String boton) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+        builder.setTitle(titulo);
+        builder.setMessage(mensaje);
+        builder.setCancelable(false); // Evitar que se cancele pulsando fuera del dialogo (por defecto true
+        builder.setPositiveButton(boton, null);
+        builder.create().show();
     }
 }
