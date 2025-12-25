@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">SeCloud</string>
+    <string name="btn_login">Login</string>
+    <string name="btn_register">Register</string>
+    <string name="btn_recuperarPassword">Recuperar Contraseña</string>
+    <string name="test_password">Password</string>
+    <string name="text_email">Email</string>
+    <string name="text_name">Name</string>
+    <string name="text_number">Number</string>
+    <string name="text_confirm">Confirm</string>
+    <string name="text_cancel">Cancel</string>
+    <string name="text_loginGoogle">Login With Google</string>
+    <string name="text_confrmPassword">Confirm password</string>
+    <string name="title_activity_home">HomeActivity</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="menu_home">Home</string>
+    <string name="menu_gallery">Gallery</string>
+    <string name="menu_slideshow">Slideshow</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="rename_file">Rename file</string>
+    <string name="new_name">New name</string>
+    <string name="rename">Rename</string>
+    <string name="cancel">Cancel</string>
+    <string name="sign_in">Sign in\n</string>
+    <string name="confirm">Confirm</string>
+    <string name="name">Name</string>
+    <string name="paper_bin">Paper bin</string>
+    <string name="favorites">Favorites</string>
+    <string name="carpet">Carpet</string>
+    <string name="shared">Shared</string>
+    <string name="enter_email">Enter email</string>
+    <string name="share">Share</string>
+    <string name="profile">Profile</string>
+    <string name="show_password">Show password</string>
+</resources>

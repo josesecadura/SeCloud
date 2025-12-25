@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_delete"
+        android:title="Eliminar de compartidos" />
+    <item
+        android:id="@+id/menu_shared"
+        android:title="Compartir" />
+</menu>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/nav_home">
+
+    <fragment
+        android:id="@+id/nav_home"
+        android:name="home.ui.home.HomeFragment"
+        android:label="@string/menu_home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/nav_favoritos"
+        android:name="home.ui.favoritos.FavoritosFragment"
+        android:label="@string/favorites"
+        tools:layout="@layout/fragment_favoritos" />
+    <fragment
+        android:id="@+id/nav_archivo_click"
+        android:name="home.ui.ArchivoClick"
+        tools:layout="@layout/activity_archivo_click" />
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="home.ui.profile.ProfileFragment"
+        android:label="@string/shared"
+        tools:layout="@layout/fragment_profile" />
+    <fragment
+        android:id="@+id/nav_carpeta"
+        android:name="home.ui.carpeta.CarpetaFragment"
+        android:label="@string/carpet"
+        tools:layout="@layout/fragment_folder" />
+    <fragment
+        android:id="@+id/nav_papelera"
+        android:name="home.ui.bin.PapeleraFragment"
+        android:label="@string/paper_bin"
+        tools:layout="@layout/fragment_bin" />
+    <fragment
+        android:id="@+id/nav_shared"
+        android:name="home.ui.compartir.CompartirFragment"
+        android:label="@string/shared"
+        tools:layout="@layout/fragment_shared" />
+</navigation>

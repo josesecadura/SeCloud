@@ -1,0 +1,11 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_upload_photo"
+        android:title="Subir foto" />
+    <item
+        android:id="@+id/menu_upload_file"
+        android:title="Subir archivo" />
+    <item
+        android:id="@+id/menu_create_folder"
+        android:title="Crear carpeta" />
+</menu>
